@@ -2,9 +2,6 @@ import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Assume process.env.API_KEY is configured in the environment
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-
 const App = () => {
   const [headers, setHeaders] = useState<string[]>(['Coluna 1', 'Coluna 2']);
   const [data, setData] = useState<string[][]>([['', '']]);
@@ -137,6 +134,9 @@ const App = () => {
     setError(null);
 
     try {
+      // Assume process.env.API_KEY is configured in the environment
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+
       const properties = headers.reduce((acc, header) => {
         if (header.trim()) {
             acc[header.trim()] = { type: Type.STRING, description: `Valor para a coluna ${header}` };
