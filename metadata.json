@@ -1,5 +1,5 @@
 {
-  "name": "CSV Editor",
-  "description": "An application to upload, view, edit, and download CSV files with a semicolon delimiter and UTF-8 encoding.",
+  "name": "Editor de CSV e JSON Inteligente",
+  "description": "Uma aplicação para fazer upload, visualizar, editar, gerar dados com IA e baixar arquivos CSV e JSON.",
   "requestFramePermissions": []
 }
