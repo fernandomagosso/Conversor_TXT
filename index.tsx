@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { GoogleGenAI, Type } from "@google/genai";
 
-const App = () => {
+const App = ({ apiKey }: { apiKey: string }) => {
   const [headers, setHeaders] = useState<string[]>(['Coluna 1', 'Coluna 2']);
   const [data, setData] = useState<string[][]>([['', '']]);
   const [fileName, setFileName] = useState('dados');
@@ -134,8 +134,7 @@ const App = () => {
     setError(null);
 
     try {
-      // Assume process.env.API_KEY is configured in the environment
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const ai = new GoogleGenAI({ apiKey });
 
       const properties = headers.reduce((acc, header) => {
         if (header.trim()) {
@@ -295,6 +294,40 @@ const App = () => {
   );
 };
 
+const AppWrapper = () => {
+    const [apiKey, setApiKey] = useState<string | null>(null);
+    const [isInitialized, setIsInitialized] = useState(false);
+
+    useEffect(() => {
+        let key = sessionStorage.getItem('gemini_api_key');
+        if (!key) {
+            key = prompt("Por favor, insira sua Chave de API (API Key) do Google AI Studio:", "");
+            if (key) {
+                sessionStorage.setItem('gemini_api_key', key);
+            }
+        }
+        setApiKey(key);
+        setIsInitialized(true);
+    }, []);
+
+    if (!isInitialized) {
+        return null; // Or a loading indicator
+    }
+
+    if (!apiKey) {
+        return (
+            <div className="placeholder" style={{ margin: '2rem', padding: '2rem' }}>
+                <h2>Chave de API Necessária</h2>
+                <p>Uma Chave de API (API Key) do Google AI Studio é necessária para usar a funcionalidade de IA.</p>
+                <p>Por favor, atualize a página para inserir sua chave.</p>
+            </div>
+        );
+    }
+
+    return <App apiKey={apiKey} />;
+};
+
+
 const container = document.getElementById('root');
 const root = createRoot(container!);
-root.render(<App />);
+root.render(<AppWrapper />);
