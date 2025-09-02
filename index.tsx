@@ -2,13 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { GoogleGenAI, Type } from "@google/genai";
 
-const App = ({ apiKey }: { apiKey: string }) => {
+const App = () => {
   const [headers, setHeaders] = useState<string[]>(['Coluna 1', 'Coluna 2']);
   const [data, setData] = useState<string[][]>([['', '']]);
   const [fileName, setFileName] = useState('dados');
   const [aiPrompt, setAiPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [isAiEnabled, setIsAiEnabled] = useState(false);
+  const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
+  const [numFields, setNumFields] = useState(headers.length);
+  const [numRecords, setNumRecords] = useState(data.length);
 
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,6 +43,11 @@ const App = ({ apiKey }: { apiKey: string }) => {
 
   const parseCsv = (text: string) => {
     const rows = text.trim().split(/\r?\n/);
+    if (rows.length === 0) {
+        setHeaders([]);
+        setData([]);
+        return;
+    }
     const newHeaders = rows[0].split(';');
     const newData = rows.slice(1).map(row => {
         const values = row.split(';');
@@ -50,7 +60,9 @@ const App = ({ apiKey }: { apiKey: string }) => {
   const parseJson = (text: string) => {
     const jsonData = JSON.parse(text);
     if (!Array.isArray(jsonData) || jsonData.length === 0) {
-      throw new Error("JSON deve ser um array de objetos não vazio.");
+        setHeaders([]);
+        setData([]);
+        return;
     }
     const newHeaders = Object.keys(jsonData[0]);
     const newData = jsonData.map(row => 
@@ -77,7 +89,7 @@ const App = ({ apiKey }: { apiKey: string }) => {
   };
   
   const handleAddColumn = () => {
-    setHeaders([...headers, `Coluna ${headers.length + 1}`]);
+    setHeaders([...headers, `Campo ${headers.length + 1}`]);
     setData(data.map(row => [...row, '']));
   };
 
@@ -90,6 +102,65 @@ const App = ({ apiKey }: { apiKey: string }) => {
     setHeaders(headers.filter((_, index) => index !== colIndex));
     setData(data.map(row => row.filter((_, index) => index !== colIndex)));
   };
+
+  const handleClearData = () => {
+    if(window.confirm('Tem certeza de que deseja limpar todos os dados da tabela?')) {
+        setHeaders([]);
+        setData([]);
+        setFileName('dados');
+    }
+  };
+  
+  const openAdjustModal = () => {
+    setNumFields(headers.length);
+    setNumRecords(data.length);
+    setIsAdjustModalOpen(true);
+  };
+
+  const handleAdjustTable = () => {
+    const targetCols = numFields;
+    const targetRows = numRecords;
+
+    if (targetCols <= 0 || targetRows <= 0) {
+        setHeaders([]);
+        setData([]);
+        setIsAdjustModalOpen(false);
+        return;
+    }
+
+    const currentCols = headers.length;
+    let newHeaders = [...headers];
+    let newData = data.map(row => [...row]);
+
+    // Adjust Columns
+    if (targetCols > currentCols) {
+        for (let i = currentCols; i < targetCols; i++) {
+            newHeaders.push(`Campo ${i + 1}`);
+            newData.forEach(row => row.push(''));
+        }
+    } else if (targetCols < currentCols) {
+        newHeaders = newHeaders.slice(0, targetCols);
+        newData = newData.map(row => row.slice(0, targetCols));
+    }
+    
+    const finalColCount = newHeaders.length;
+    const currentRows = newData.length;
+
+    // Adjust Rows
+    if (targetRows > currentRows) {
+        const emptyRow = Array(finalColCount).fill('');
+        for (let i = currentRows; i < targetRows; i++) {
+            newData.push([...emptyRow]);
+        }
+    } else if (targetRows < currentRows) {
+        newData = newData.slice(0, targetRows);
+    }
+    
+    setHeaders(newHeaders);
+    setData(newData);
+    setIsAdjustModalOpen(false);
+  };
+
 
   const downloadFile = (content: string, extension: 'csv' | 'json') => {
     const mimeType = extension === 'csv' ? 'text/csv;charset=utf-8;' : 'application/json;charset=utf-8;';
@@ -123,8 +194,20 @@ const App = ({ apiKey }: { apiKey: string }) => {
     const jsonContent = JSON.stringify(jsonData, null, 2);
     downloadFile(jsonContent, 'json');
   };
+  
+  const handleConnectAi = () => {
+    const key = prompt("Por favor, insira sua Chave de API (API Key) do Google AI Studio:", "");
+    if (key) {
+        setApiKey(key);
+        setIsAiEnabled(true);
+    }
+  };
 
   const handleGenerateData = async () => {
+    if (!apiKey) {
+      setError('A chave de API não foi configurada.');
+      return;
+    }
     if (!aiPrompt.trim() || headers.length === 0) {
       setError('Por favor, defina os cabeçalhos e descreva os dados a serem gerados.');
       return;
@@ -181,7 +264,7 @@ const App = ({ apiKey }: { apiKey: string }) => {
     }
   };
 
-  const hasData = data.length > 0;
+  const hasData = data.length > 0 && headers.length > 0;
 
   return (
     <>
@@ -196,73 +279,87 @@ const App = ({ apiKey }: { apiKey: string }) => {
            <input id="file-upload" type="file" accept=".csv, .json, application/json, text/csv" onChange={handleFileUpload} className="file-input" />
         </label>
         <button onClick={handleAddRow} className="btn btn-primary">
-            <span>&#x2795;</span> Adicionar Linha
+            <span>&#x2795;</span> Adicionar Registro
         </button>
         <button onClick={handleAddColumn} className="btn btn-primary">
-            <span>&#x2795;</span> Adicionar Coluna
+            <span>&#x2795;</span> Adicionar Campo
         </button>
+         <button onClick={openAdjustModal} className="btn btn-primary">
+            <span>&#x2699;&#xFE0F;</span> Ajustar Tabela
+        </button>
+        <button onClick={handleClearData} className="btn btn-danger">
+             <span>&#x1F5D1;&#xFE0F;</span> Limpar Dados
+        </button>
+        {!isAiEnabled && (
+            <button onClick={handleConnectAi} className="btn btn-primary">
+                ✨ Conectar IA
+            </button>
+        )}
       </div>
       
-      <div className="ai-section">
-        <h2>✨ Geração com IA</h2>
-        <div className="ai-controls">
-            <input
-                type="text"
-                value={aiPrompt}
-                onChange={(e) => setAiPrompt(e.target.value)}
-                className="input-field"
-                placeholder="Ex: 5 nomes de clientes com e-mails e cidades"
-                aria-label="Descrição para gerar dados com IA"
-                disabled={isGenerating}
-            />
-            <button onClick={handleGenerateData} className="btn btn-primary" disabled={isGenerating}>
-                {isGenerating ? 'Gerando...' : 'Gerar Dados'}
-            </button>
+      {isAiEnabled && (
+        <div className="ai-section">
+            <h2>✨ Geração com IA</h2>
+            <div className="ai-controls">
+                <input
+                    type="text"
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    className="input-field"
+                    placeholder="Ex: 5 nomes de clientes com e-mails e cidades"
+                    aria-label="Descrição para gerar dados com IA"
+                    disabled={isGenerating}
+                />
+                <button onClick={handleGenerateData} className="btn btn-primary" disabled={isGenerating}>
+                    {isGenerating ? 'Gerando...' : 'Gerar Dados'}
+                </button>
+            </div>
+            {error && <p className="error-message">{error}</p>}
         </div>
-        {error && <p className="error-message">{error}</p>}
-      </div>
+      )}
 
       {hasData ? (
         <>
             <div className="table-container" role="region" aria-labelledby="table-caption">
                 <table className="data-table" aria-label="Tabela de dados editável">
-                    <caption id="table-caption" className="sr-only">Tabela de dados editável</caption>
+                    <caption id="table-caption" className="sr-only">Tabela de dados editável em visualização transposta. Campos são linhas e registros são colunas.</caption>
                     <thead>
                         <tr>
-                            {headers.map((header, colIndex) => (
-                                <th key={colIndex} scope="col">
+                            <th scope="col" aria-label="Campos">Campos</th>
+                            {data.map((_, rowIndex) => (
+                                <th key={rowIndex} scope="col">
+                                    <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px'}}>
+                                        <span>Registro {rowIndex + 1}</span>
+                                        <button onClick={() => handleDeleteRow(rowIndex)} className="btn btn-danger" aria-label={`Excluir registro ${rowIndex + 1}`}>&#x1F5D1;</button>
+                                    </div>
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {headers.map((header, colIndex) => (
+                            <tr key={colIndex}>
+                                <th scope="row">
                                     <div style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
                                         <input
                                             type="text"
                                             value={header}
                                             onChange={(e) => handleHeaderChange(colIndex, e.target.value)}
-                                            aria-label={`Cabeçalho da coluna ${colIndex + 1}`}
+                                            aria-label={`Nome do campo ${header}`}
                                         />
-                                        <button onClick={() => handleDeleteColumn(colIndex)} className="btn btn-danger" aria-label={`Excluir coluna ${colIndex + 1}`}>&#x1F5D1;</button>
+                                        <button onClick={() => handleDeleteColumn(colIndex)} className="btn btn-danger" aria-label={`Excluir campo ${header}`}>&#x1F5D1;</button>
                                     </div>
                                 </th>
-                            ))}
-                            <th scope="col" className="action-cell" aria-label="Ações"></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {data.map((row, rowIndex) => (
-                            <tr key={rowIndex}>
-                                {row.map((cell, colIndex) => (
-                                    <td key={colIndex}>
+                                {data.map((row, rowIndex) => (
+                                    <td key={rowIndex}>
                                         <input
                                             type="text"
-                                            value={cell}
+                                            value={row[colIndex] ?? ''}
                                             onChange={(e) => handleCellChange(rowIndex, colIndex, e.target.value)}
-                                            aria-label={`Linha ${rowIndex + 1}, Coluna ${colIndex + 1}`}
+                                            aria-label={`Registro ${rowIndex + 1}, Campo ${header}`}
                                         />
                                     </td>
                                 ))}
-                                <td className="action-cell">
-                                    <button onClick={() => handleDeleteRow(rowIndex)} className="btn btn-danger" aria-label={`Excluir linha ${rowIndex + 1}`}>
-                                        &#x1F5D1;
-                                    </button>
-                                </td>
                             </tr>
                         ))}
                     </tbody>
@@ -287,47 +384,52 @@ const App = ({ apiKey }: { apiKey: string }) => {
         </>
       ) : (
         <div className="placeholder">
-          <p>Nenhum dado para exibir. Faça o upload de um arquivo ou adicione linhas para começar.</p>
+          <p>Nenhum dado para exibir. Faça o upload de um arquivo ou adicione registros e campos para começar.</p>
+        </div>
+      )}
+
+      {isAdjustModalOpen && (
+        <div className="modal-backdrop">
+            <div className="modal">
+                <div className="modal-header">
+                    <h2>Ajustar Dimensões da Tabela</h2>
+                    <button onClick={() => setIsAdjustModalOpen(false)} className="btn-close" aria-label="Fechar modal">&times;</button>
+                </div>
+                <div className="modal-body">
+                    <div className="form-group">
+                        <label htmlFor="num-fields">Número de Campos (Colunas):</label>
+                        <input
+                            id="num-fields"
+                            type="number"
+                            className="input-field"
+                            value={numFields}
+                            onChange={(e) => setNumFields(parseInt(e.target.value, 10))}
+                            min="0"
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="num-records">Número de Registros (Linhas):</label>
+                        <input
+                            id="num-records"
+                            type="number"
+                            className="input-field"
+                            value={numRecords}
+                            onChange={(e) => setNumRecords(parseInt(e.target.value, 10))}
+                            min="0"
+                        />
+                    </div>
+                </div>
+                <div className="modal-footer">
+                    <button onClick={() => setIsAdjustModalOpen(false)} className="btn btn-secondary">Cancelar</button>
+                    <button onClick={handleAdjustTable} className="btn btn-primary">Aplicar</button>
+                </div>
+            </div>
         </div>
       )}
     </>
   );
 };
 
-const AppWrapper = () => {
-    const [apiKey, setApiKey] = useState<string | null>(null);
-    const [isInitialized, setIsInitialized] = useState(false);
-
-    useEffect(() => {
-        let key = sessionStorage.getItem('gemini_api_key');
-        if (!key) {
-            key = prompt("Por favor, insira sua Chave de API (API Key) do Google AI Studio:", "");
-            if (key) {
-                sessionStorage.setItem('gemini_api_key', key);
-            }
-        }
-        setApiKey(key);
-        setIsInitialized(true);
-    }, []);
-
-    if (!isInitialized) {
-        return null; // Or a loading indicator
-    }
-
-    if (!apiKey) {
-        return (
-            <div className="placeholder" style={{ margin: '2rem', padding: '2rem' }}>
-                <h2>Chave de API Necessária</h2>
-                <p>Uma Chave de API (API Key) do Google AI Studio é necessária para usar a funcionalidade de IA.</p>
-                <p>Por favor, atualize a página para inserir sua chave.</p>
-            </div>
-        );
-    }
-
-    return <App apiKey={apiKey} />;
-};
-
-
 const container = document.getElementById('root');
 const root = createRoot(container!);
-root.render(<AppWrapper />);
+root.render(<App />);

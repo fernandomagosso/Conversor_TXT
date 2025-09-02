@@ -1,6 +1,8 @@
 :root {
   --primary-color: #007bff;
   --primary-hover-color: #0056b3;
+  --secondary-color: #6c757d;
+  --secondary-hover-color: #5a6268;
   --danger-color: #dc3545;
   --danger-hover-color: #c82333;
   --light-color: #f8f9fa;
@@ -116,18 +118,30 @@ header p {
   background-color: var(--primary-hover-color);
 }
 
+.btn-secondary {
+  background-color: var(--secondary-color);
+}
+
+.btn-secondary:hover {
+  background-color: var(--secondary-hover-color);
+}
+
 .btn-danger {
   background-color: var(--danger-color);
   color: white;
+}
+
+.btn-danger:hover {
+  background-color: var(--danger-hover-color);
+}
+
+/* Specific style for small, round delete buttons in table */
+.data-table .btn-danger {
   padding: 0.5rem;
   border-radius: 50%;
   width: 32px;
   height: 32px;
   justify-content: center;
-}
-
-.btn-danger:hover {
-  background-color: var(--danger-hover-color);
 }
 
 .file-input-label {
@@ -177,7 +191,13 @@ header p {
 .data-table th {
   background-color: var(--light-color);
   font-weight: 600;
+  padding: 0.5rem;
 }
+
+.data-table td {
+    padding: 0;
+}
+
 
 .data-table th input, .data-table td input {
   width: 100%;
@@ -194,18 +214,13 @@ header p {
   background-color: #e9f4ff;
 }
 
-.data-table tr:nth-child(even) {
+
+.data-table tbody tr:nth-child(even) > td > input {
   background-color: var(--light-color);
 }
 
-.data-table tr:hover {
+.data-table tbody tr:hover > td > input {
   background-color: #e9ecef;
-}
-
-.action-cell {
-  width: 60px;
-  text-align: center;
-  vertical-align: middle;
 }
 
 .placeholder {
@@ -231,4 +246,74 @@ header p {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border-width: 0;
+}
+
+/* Modal Styles */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal {
+    background: var(--background-color);
+    border-radius: var(--border-radius);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    width: 90%;
+    max-width: 500px;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.btn-close {
+    background: none;
+    border: none;
+    font-size: 1.75rem;
+    cursor: pointer;
+    color: var(--secondary-color);
+}
+
+.modal-body {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group label {
+    font-weight: 500;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border-color);
 }
