@@ -177,8 +177,21 @@ const App = () => {
   };
 
   const handleDownloadCsv = () => {
-    const headerString = headers.join(';');
-    const rowStrings = data.map(row => row.join(';'));
+    const escapeCsvCell = (cell: string | undefined | null): string => {
+        if (cell === null || cell === undefined) {
+          return '';
+        }
+        const str = String(cell);
+        // Se a string contém o separador, aspas ou quebra de linha, ela precisa ser colocada entre aspas
+        if (str.includes(';') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+          const escapedStr = str.replace(/"/g, '""');
+          return `"${escapedStr}"`;
+        }
+        return str;
+    };
+
+    const headerString = headers.map(escapeCsvCell).join(';');
+    const rowStrings = data.map(row => row.map(escapeCsvCell).join(';'));
     const csvContent = [headerString, ...rowStrings].join('\n');
     downloadFile(csvContent, 'csv');
   };
